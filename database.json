@@ -1,0 +1,33 @@
+{
+    "chirps": {
+        "1": {
+            "body": "eeeeeee",
+            "id": 1
+        },
+        "2": {
+            "body": "asdfasdfwer",
+            "id": 2
+        },
+        "3": {
+            "body": "rrrr",
+            "id": 3
+        }
+    },
+    "users": [
+        {
+            "password": "$2a$10$dv/4cCsIUFylgDdDIwQafuc5FPVrQsw9uC37LffWOMXgLGspknpum",
+            "email": "takis@gmail.com",
+            "id": 1
+        },
+        {
+            "password": "$2a$10$2M7ovU4UtwcHhZdgJ6zsv.nLivWHPyYirhGra5r5.ZwLeR6WYHdJi",
+            "email": "saul@bettercall.com",
+            "id": 2
+        },
+        {
+            "password": "$2a$10$F3eHO1CCezqYR/Po/xME5OWaIyor58vqhXwjILVc1vfrUeCsazkTS",
+            "email": "takis@gmail.com",
+            "id": 3
+        }
+    ]
+}
