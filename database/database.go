@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"sync"
+	"time"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -16,8 +17,9 @@ type DB struct {
 }
 
 type DBStructure struct {
-	Chirps map[int]Chirp `json:"chirps"`
-	Users  []User        `json:"users"`
+	Chirps        map[int]Chirp           `json:"chirps"`
+	Users         []User                  `json:"users"`
+	RefreshTokens map[string]RefreshToken `json:"refresh_tokens"`
 }
 
 type User struct {
@@ -31,6 +33,12 @@ type Chirp struct {
 	Id      int    `json:"id"`
 }
 
+type RefreshToken struct {
+	Token     string
+	UserId    int
+	ExpiresAt time.Time
+}
+
 func NewDB(path string) (*DB, error) {
 	db := &DB{
 		path: path,
@@ -42,6 +50,83 @@ func NewDB(path string) (*DB, error) {
 	}
 
 	return db, nil
+}
+
+func (db *DB) SaveRefreshToken(userId int, token string, expiresIn int) error {
+	dbStructure, err := db.loadDB()
+	if err != nil {
+		return err
+	}
+
+	if dbStructure.RefreshTokens == nil {
+		dbStructure.RefreshTokens = make(map[string]RefreshToken)
+	}
+
+	dbStructure.RefreshTokens[token] = RefreshToken{
+		Token:     token,
+		UserId:    userId,
+		ExpiresAt: time.Now().UTC().Add(time.Duration(expiresIn) * time.Second),
+	}
+
+	if err := db.writeDB(dbStructure); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (db *DB) LookUpTokenInDB(token string) (*User, error) {
+	dbStructure, err := db.loadDB()
+
+	if err != nil {
+		return &User{}, err
+	}
+
+	refreshToken, exists := dbStructure.RefreshTokens[token]
+	if !exists {
+		return &User{}, fmt.Errorf("refresh token not found")
+	}
+
+	if time.Now().After(refreshToken.ExpiresAt) {
+		delete(dbStructure.RefreshTokens, token)
+		return &User{}, fmt.Errorf("refresh token has expired")
+	}
+
+	var user User
+	userExists := false
+
+	for _, userFromDb := range dbStructure.Users {
+		if userFromDb.Id == refreshToken.UserId {
+			user = userFromDb
+			userExists = true
+		}
+	}
+
+	if !userExists {
+		return &User{}, fmt.Errorf("user not found")
+	}
+
+	return &user, nil
+}
+
+func (db *DB) RevokeToken(token string) error {
+	dbStructure, err := db.loadDB()
+
+	if err != nil {
+		return err
+	}
+
+	if _, exists := dbStructure.RefreshTokens[token]; !exists {
+		return fmt.Errorf("token not found")
+	}
+
+	delete(dbStructure.RefreshTokens, token)
+
+	if err := db.writeDB(dbStructure); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (db *DB) Login(user User) (User, error) {

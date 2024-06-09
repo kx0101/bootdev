@@ -1,33 +1,27 @@
 {
     "chirps": {
         "1": {
-            "body": "eeeeeee",
+            "body": "whatever lol",
             "id": 1
-        },
-        "2": {
-            "body": "asdfasdfwer",
-            "id": 2
-        },
-        "3": {
-            "body": "rrrr",
-            "id": 3
         }
     },
     "users": [
         {
-            "password": "$2a$10$dv/4cCsIUFylgDdDIwQafuc5FPVrQsw9uC37LffWOMXgLGspknpum",
-            "email": "takis@gmail.com",
+            "password": "$2a$10$k4EAo8yOlk/siWQg.8IGtuuIeWnnfcCy4h8kQHynMfzxMKIRqrwxe",
+            "email": "chuck@bettercall.com",
             "id": 1
         },
         {
-            "password": "$2a$10$2M7ovU4UtwcHhZdgJ6zsv.nLivWHPyYirhGra5r5.ZwLeR6WYHdJi",
-            "email": "saul@bettercall.com",
-            "id": 2
-        },
-        {
-            "password": "$2a$10$F3eHO1CCezqYR/Po/xME5OWaIyor58vqhXwjILVc1vfrUeCsazkTS",
+            "password": "$2a$10$pnE.CR8KuXyQcU33k4nTTOkrGN1hH2GTMlcaOe.qF.lSLGt0NL9zC",
             "email": "takis@gmail.com",
-            "id": 3
+            "id": 2
         }
-    ]
+    ],
+    "refresh_tokens": {
+        "36e973bf555a07e1502ae80e3e775419b06ea576ce8301b6a9b0a369521dcc4e": {
+            "Token": "36e973bf555a07e1502ae80e3e775419b06ea576ce8301b6a9b0a369521dcc4e",
+            "UserId": 2,
+            "ExpiresAt": "2024-06-11T22:28:18.133685Z"
+        }
+    }
 }
