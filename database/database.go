@@ -23,9 +23,10 @@ type DBStructure struct {
 }
 
 type User struct {
-	Password string `json:"password"`
-	Email    string `json:"email"`
-	Id       int    `json:"id"`
+	Password    string `json:"password"`
+	Email       string `json:"email"`
+	Id          int    `json:"id"`
+	IsChirpyRed bool   `json:"is_chirpy_red"`
 }
 
 type Chirp struct {
@@ -128,6 +129,29 @@ func (db *DB) RevokeToken(token string) error {
 	}
 
 	return nil
+}
+
+func (db *DB) UpgradeUser(userId int) error {
+	dbStructure, err := db.loadDB()
+
+	if err != nil {
+		return err
+	}
+
+	for i, userFromDb := range dbStructure.Users {
+		if userFromDb.Id == userId {
+			dbStructure.Users[i].IsChirpyRed = true
+			fmt.Println(dbStructure.Users[i].IsChirpyRed)
+
+			if err := db.writeDB(dbStructure); err != nil {
+				return err
+			}
+
+			return nil
+		}
+	}
+
+	return fmt.Errorf("there is no such user")
 }
 
 func (db *DB) Login(user User) (User, error) {

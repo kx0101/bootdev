@@ -1,27 +1,18 @@
 {
-    "chirps": {},
+    "chirps": null,
     "users": [
         {
-            "password": "$2a$10$AjwgLW2aIeOt3Fg/s4YEX.Ctdteb1oHznCAvnVmzAt3ZI6TWsZt96",
+            "password": "$2a$10$2AC7eKAKPSugPZKHGLmK0Oi6vXab2zHqwduUy9yWEStHhd6TyUTo.",
             "email": "walt@breakingbad.com",
-            "id": 1
-        },
-        {
-            "password": "$2a$10$Uf3Oaww0FqRhAgVsl61m6uNqfxr3thlXCV6QsznkZNHi9de5TfJ.S",
-            "email": "skyler@breakingbad.com",
-            "id": 2
+            "id": 1,
+            "is_chirpy_red": true
         }
     ],
     "refresh_tokens": {
-        "98f070eb4394038337ed66919857f803b514204e2bc9e86d42606a448127357e": {
-            "Token": "98f070eb4394038337ed66919857f803b514204e2bc9e86d42606a448127357e",
-            "UserId": 2,
-            "ExpiresAt": "2024-06-12T03:58:12.898806Z"
-        },
-        "be4ae029bbd6df6c2a76e86fb3eba550fd24d4d2f0bf90642ffd99130b5716fb": {
-            "Token": "be4ae029bbd6df6c2a76e86fb3eba550fd24d4d2f0bf90642ffd99130b5716fb",
+        "dbd4647a66c0b0c3a278135eecd9dac3e6a160f5ee3fb1f7d817f0bb179b6955": {
+            "Token": "dbd4647a66c0b0c3a278135eecd9dac3e6a160f5ee3fb1f7d817f0bb179b6955",
             "UserId": 1,
-            "ExpiresAt": "2024-06-12T03:58:12.72963Z"
+            "ExpiresAt": "2024-06-12T04:44:55.497483Z"
         }
     }
 }

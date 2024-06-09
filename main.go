@@ -19,9 +19,10 @@ import (
 )
 
 var (
-	secretKey                     = os.Getenv("JWT_SECRET")
 	accessTokenDurationInSeconds  = 3600
 	refreshTokenDurationInSeconds = 3600 * 60
+	SECRET_KEY                    string
+	API_KEY                       string
 )
 
 type apiConfig struct {
@@ -98,7 +99,7 @@ func generateRefreshToken() (string, error) {
 	return hex.EncodeToString(bytes), nil
 }
 
-func createJWT(user database.User, secretKey []byte) (string, error) {
+func createJWT(user database.User, SECRET_KEY []byte) (string, error) {
 	claims := jwt.RegisteredClaims{
 		Issuer:    "chirpy",
 		IssuedAt:  jwt.NewNumericDate(time.Now().UTC()),
@@ -108,7 +109,7 @@ func createJWT(user database.User, secretKey []byte) (string, error) {
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
-	signedToken, err := token.SignedString(secretKey)
+	signedToken, err := token.SignedString(SECRET_KEY)
 	if err != nil {
 		return "", err
 	}
@@ -156,7 +157,7 @@ func deleteChirp(db *database.DB) http.HandlerFunc {
 			return
 		}
 
-		token, err := extractJWT(r, []byte(secretKey))
+		token, err := extractJWT(r, []byte(SECRET_KEY))
 		if err != nil {
 			writeJSONReponse(w, http.StatusUnauthorized, ResponseError{Error: err.Error()})
 			return
@@ -222,7 +223,7 @@ func refreshToken(db *database.DB) http.HandlerFunc {
 			return
 		}
 
-		newAccessToken, err := createJWT(*user, []byte(secretKey))
+		newAccessToken, err := createJWT(*user, []byte(SECRET_KEY))
 		if err != nil {
 			writeJSONReponse(w, http.StatusUnauthorized, ResponseError{Error: err.Error()})
 			return
@@ -267,7 +268,7 @@ func login(db *database.DB) http.HandlerFunc {
 			return
 		}
 
-		token, err := createJWT(user, []byte(secretKey))
+		token, err := createJWT(user, []byte(SECRET_KEY))
 		if err != nil {
 			writeJSONReponse(w, http.StatusInternalServerError, ResponseError{Error: err.Error()})
 		}
@@ -284,18 +285,20 @@ func login(db *database.DB) http.HandlerFunc {
 			Email        string `json:"email"`
 			Token        string `json:"token"`
 			RefreshToken string `json:"refresh_token"`
+			IsChirpyRed  bool   `json:"is_chirpy_red"`
 		}{
 			Id:           user.Id,
 			Email:        user.Email,
 			Token:        token,
 			RefreshToken: refreshToken,
+			IsChirpyRed:  user.IsChirpyRed,
 		}
 
 		writeJSONReponse(w, http.StatusOK, responseBody)
 	}
 }
 
-func extractJWT(r *http.Request, secretKey []byte) (*jwt.Token, error) {
+func extractJWT(r *http.Request, SECRET_KEY []byte) (*jwt.Token, error) {
 	authHeader := r.Header.Get("Authorization")
 	if authHeader == "" {
 		return nil, fmt.Errorf("authorization header is required")
@@ -307,7 +310,7 @@ func extractJWT(r *http.Request, secretKey []byte) (*jwt.Token, error) {
 	}
 
 	token, err := jwt.ParseWithClaims(tokenString, &jwt.RegisteredClaims{}, func(token *jwt.Token) (interface{}, error) {
-		return secretKey, nil
+		return SECRET_KEY, nil
 	})
 	if err != nil {
 		return nil, fmt.Errorf("invalid token: %w", err)
@@ -318,6 +321,20 @@ func extractJWT(r *http.Request, secretKey []byte) (*jwt.Token, error) {
 	}
 
 	return token, nil
+}
+
+func extractApiKey(r *http.Request) (string, error) {
+	authHeader := r.Header.Get("Authorization")
+	if authHeader == "" {
+		return "", fmt.Errorf("authorization header is required")
+	}
+
+	apiKey := strings.TrimPrefix(authHeader, "ApiKey ")
+	if apiKey == authHeader {
+		return "", fmt.Errorf("authorization header format must be ApiKey {token}")
+	}
+
+	return apiKey, nil
 }
 
 func extractRefreshToken(r *http.Request) (string, error) {
@@ -336,7 +353,7 @@ func extractRefreshToken(r *http.Request) (string, error) {
 
 func updateUser(db *database.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		token, err := extractJWT(r, []byte(secretKey))
+		token, err := extractJWT(r, []byte(SECRET_KEY))
 		if err != nil {
 			writeJSONReponse(w, http.StatusUnauthorized, ResponseError{Error: err.Error()})
 			return
@@ -382,6 +399,54 @@ func updateUser(db *database.DB) http.HandlerFunc {
 	}
 }
 
+func userUpgrade(db *database.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		apiKey, err := extractApiKey(r)
+		if err != nil {
+			writeJSONReponse(w, http.StatusUnauthorized, ResponseError{Error: err.Error()})
+			return
+		}
+
+		fmt.Println("apiKey: ", apiKey)
+		fmt.Println("API_KEY:", API_KEY)
+		if apiKey != API_KEY {
+			writeJSONReponse(w, http.StatusUnauthorized, ResponseError{Error: "api key is incorrect"})
+			return
+		}
+
+		var requestBody struct {
+			Event string `json:"event"`
+			Data  struct {
+				UserId int `json:"user_id"`
+			} `json:"data"`
+		}
+
+		if errParsed := json.NewDecoder(r.Body).Decode(&requestBody); errParsed != nil {
+			writeJSONReponse(w, http.StatusBadRequest, ResponseError{Error: "Invalid request body"})
+			return
+		}
+
+		if requestBody.Event != "user.upgraded" {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+
+		err = db.UpgradeUser(requestBody.Data.UserId)
+		if err != nil {
+			switch err.Error() {
+			case "there is no such user":
+				writeJSONReponse(w, http.StatusBadRequest, ResponseError{Error: err.Error()})
+				return
+			default:
+				writeJSONReponse(w, http.StatusInternalServerError, ResponseError{Error: err.Error()})
+				return
+			}
+		}
+
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
 func createUser(db *database.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var requestBody struct {
@@ -409,7 +474,7 @@ func createUser(db *database.DB) http.HandlerFunc {
 
 func createChirp(db *database.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		token, err := extractJWT(r, []byte(secretKey))
+		token, err := extractJWT(r, []byte(SECRET_KEY))
 		if err != nil {
 			writeJSONReponse(w, http.StatusUnauthorized, ResponseError{Error: err.Error()})
 			return
@@ -447,7 +512,14 @@ func createChirp(db *database.DB) http.HandlerFunc {
 }
 
 func main() {
-	godotenv.Load()
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatalf("Error loading .env file: %s", err)
+	}
+
+	SECRET_KEY = os.Getenv("JWT_SECRET")
+	API_KEY = os.Getenv("POLKA_KEY")
+
 	db, err := database.NewDB("database.json")
 	if err != nil {
 		log.Fatalf("error while creating database: %s", err)
@@ -481,6 +553,8 @@ func main() {
 	mux.HandleFunc("POST /api/login", login(db))
 	mux.HandleFunc("POST /api/revoke", revokeToken(db))
 	mux.HandleFunc("POST /api/refresh", refreshToken(db))
+
+	mux.HandleFunc("POST /api/polka/webhooks", userUpgrade(db))
 
 	server := &http.Server{
 		Addr:    ":8080",
