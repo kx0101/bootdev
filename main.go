@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -119,12 +120,39 @@ func createJWT(user database.User, SECRET_KEY []byte) (string, error) {
 
 func getChirps(db *database.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		chirps, err := db.GetChirps()
-		if err != nil {
-			writeJSONReponse(w, http.StatusInternalServerError, ResponseError{Error: err.Error()})
+		authorId := r.URL.Query().Get("author_id")
+		sort := r.URL.Query().Get("sort")
+
+		var chirps []database.Chirp
+		var err error
+
+		if authorId != "" {
+			authorIdInt, errParsed := strconv.Atoi(authorId)
+			if errParsed != nil {
+				writeJSONReponse(w, http.StatusBadRequest, ResponseError{Error: "Invalid author_id"})
+				return
+			}
+
+			chirps, err = db.GetChirpByAuthorId(authorIdInt)
+			if err != nil {
+				writeJSONReponse(w, http.StatusInternalServerError, ResponseError{Error: err.Error()})
+				return
+			}
+		} else {
+			chirps, err = db.GetChirps()
+			if err != nil {
+				writeJSONReponse(w, http.StatusInternalServerError, ResponseError{Error: err.Error()})
+				return
+			}
+		}
+
+		if sort == "desc" {
+			chirps = sortChirps(chirps, "descending")
+			writeJSONReponse(w, http.StatusOK, chirps)
 			return
 		}
 
+		chirps = sortChirps(chirps, "ascending")
 		writeJSONReponse(w, http.StatusOK, chirps)
 	}
 }
@@ -296,6 +324,18 @@ func login(db *database.DB) http.HandlerFunc {
 
 		writeJSONReponse(w, http.StatusOK, responseBody)
 	}
+}
+
+func sortChirps(chirps []database.Chirp, classification string) []database.Chirp {
+	sort.Slice(chirps, func(i, j int) bool {
+		if classification == "descending" {
+			return chirps[i].Id > chirps[j].Id
+		}
+
+		return chirps[i].Id < chirps[j].Id
+	})
+
+	return chirps
 }
 
 func extractJWT(r *http.Request, SECRET_KEY []byte) (*jwt.Token, error) {
