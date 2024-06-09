@@ -147,6 +147,49 @@ func getChirp(db *database.DB) http.HandlerFunc {
 	}
 }
 
+func deleteChirp(db *database.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id := r.PathValue("chirpId")
+		parsedId, err := strconv.Atoi(id)
+		if err != nil {
+			writeJSONReponse(w, http.StatusBadRequest, ResponseError{Error: err.Error()})
+			return
+		}
+
+		token, err := extractJWT(r, []byte(secretKey))
+		if err != nil {
+			writeJSONReponse(w, http.StatusUnauthorized, ResponseError{Error: err.Error()})
+			return
+		}
+
+		claims, ok := token.Claims.(*jwt.RegisteredClaims)
+		if !ok || !token.Valid {
+			writeJSONReponse(w, http.StatusUnauthorized, ResponseError{Error: "Unauthorized"})
+			return
+		}
+
+		userId, err := strconv.Atoi(claims.Subject)
+		if err != nil {
+			writeJSONReponse(w, http.StatusUnauthorized, ResponseError{Error: err.Error()})
+			return
+		}
+
+		err = db.DeleteChirp(userId, parsedId)
+		if err != nil {
+			switch err.Error() {
+			case "you're not the author of this chirp":
+				writeJSONReponse(w, http.StatusForbidden, ResponseError{Error: err.Error()})
+			case "chirp not found":
+				writeJSONReponse(w, http.StatusNotFound, ResponseError{Error: err.Error()})
+			default:
+				writeJSONReponse(w, http.StatusInternalServerError, ResponseError{Error: err.Error()})
+			}
+		}
+
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
 func revokeToken(db *database.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		tokenString, err := extractRefreshToken(r)
@@ -366,16 +409,34 @@ func createUser(db *database.DB) http.HandlerFunc {
 
 func createChirp(db *database.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		token, err := extractJWT(r, []byte(secretKey))
+		if err != nil {
+			writeJSONReponse(w, http.StatusUnauthorized, ResponseError{Error: err.Error()})
+			return
+		}
+
+		claims, ok := token.Claims.(*jwt.RegisteredClaims)
+		if !ok || !token.Valid {
+			writeJSONReponse(w, http.StatusUnauthorized, ResponseError{Error: "Unauthorized"})
+			return
+		}
+
+		userId, err := strconv.Atoi(claims.Subject)
+		if err != nil {
+			writeJSONReponse(w, http.StatusUnauthorized, ResponseError{Error: err.Error()})
+			return
+		}
+
 		var requestBody struct {
 			Body string `json:"body"`
 		}
 
-		if err := json.NewDecoder(r.Body).Decode(&requestBody); err != nil {
+		if errParsed := json.NewDecoder(r.Body).Decode(&requestBody); errParsed != nil {
 			writeJSONReponse(w, http.StatusBadRequest, ResponseError{Error: "Invalid request body"})
 			return
 		}
 
-		chirp, err := db.CreateChirp(requestBody.Body)
+		chirp, err := db.CreateChirp(requestBody.Body, userId)
 		if err != nil {
 			writeJSONReponse(w, http.StatusBadRequest, ResponseError{Error: err.Error()})
 			return
@@ -412,6 +473,7 @@ func main() {
 	mux.HandleFunc("POST /api/chirps", createChirp(db))
 	mux.HandleFunc("GET /api/chirps", getChirps(db))
 	mux.HandleFunc("GET /api/chirps/{chirpId}", getChirp(db))
+	mux.HandleFunc("DELETE /api/chirps/{chirpId}", deleteChirp(db))
 
 	mux.HandleFunc("POST /api/users", createUser(db))
 	mux.HandleFunc("PUT /api/users", updateUser(db))

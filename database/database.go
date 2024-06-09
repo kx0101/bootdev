@@ -29,8 +29,9 @@ type User struct {
 }
 
 type Chirp struct {
-	Content string `json:"body"`
-	Id      int    `json:"id"`
+	Content  string `json:"body"`
+	Id       int    `json:"id"`
+	AuthorId int    `json:"author_id"`
 }
 
 type RefreshToken struct {
@@ -233,7 +234,7 @@ func (db *DB) CreateUser(user User) (User, error) {
 	return user, nil
 }
 
-func (db *DB) CreateChirp(body string) (Chirp, error) {
+func (db *DB) CreateChirp(body string, userId int) (Chirp, error) {
 	dbStructure, err := db.loadDB()
 
 	if err != nil {
@@ -247,8 +248,9 @@ func (db *DB) CreateChirp(body string) (Chirp, error) {
 	}
 
 	chirp := Chirp{
-		Id:      id,
-		Content: body,
+		Id:       id,
+		Content:  body,
+		AuthorId: userId,
 	}
 
 	if dbStructure.Chirps == nil {
@@ -274,7 +276,7 @@ func (db *DB) GetChirps() ([]Chirp, error) {
 		return []Chirp{}, nil
 	}
 
-	var chirps []Chirp
+	chirps := make([]Chirp, 0, len(dbStructure.Chirps))
 	for _, chirp := range dbStructure.Chirps {
 		chirps = append(chirps, chirp)
 	}
@@ -294,10 +296,37 @@ func (db *DB) GetChirp(id int) (Chirp, error) {
 
 	chirp, exists := dbStructure.Chirps[id]
 	if !exists {
-		return chirp, nil
+		return Chirp{}, fmt.Errorf("there is no chirp with id: %+v", id)
 	}
 
-	return Chirp{}, fmt.Errorf("there is no chirp with id: %+v", id)
+	return chirp, nil
+}
+
+func (db *DB) DeleteChirp(userId, chirpId int) error {
+	dbStructure, err := db.loadDB()
+	if err != nil {
+		return err
+	}
+
+	if dbStructure.Chirps == nil {
+		return nil
+	}
+
+	chirp, exists := dbStructure.Chirps[chirpId]
+	if !exists {
+		return fmt.Errorf("chirp not found")
+	}
+
+	if userId != chirp.AuthorId {
+		return fmt.Errorf("you're not the author of this chirp")
+	}
+
+	delete(dbStructure.Chirps, chirpId)
+	if err := db.writeDB(dbStructure); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (db *DB) ensureDB() error {
