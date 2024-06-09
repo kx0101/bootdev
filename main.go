@@ -520,6 +520,13 @@ func main() {
 	SECRET_KEY = os.Getenv("JWT_SECRET")
 	API_KEY = os.Getenv("POLKA_KEY")
 
+	if _, errDeleting := os.Stat("database.json"); errDeleting == nil {
+		errRemoving := os.Remove("database.json")
+		if errRemoving != nil {
+			log.Fatalf("Error deleting database.json: %s", errRemoving)
+		}
+	}
+
 	db, err := database.NewDB("database.json")
 	if err != nil {
 		log.Fatalf("error while creating database: %s", err)

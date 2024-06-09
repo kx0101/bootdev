@@ -1,18 +1,5 @@
 {
     "chirps": null,
-    "users": [
-        {
-            "password": "$2a$10$2AC7eKAKPSugPZKHGLmK0Oi6vXab2zHqwduUy9yWEStHhd6TyUTo.",
-            "email": "walt@breakingbad.com",
-            "id": 1,
-            "is_chirpy_red": true
-        }
-    ],
-    "refresh_tokens": {
-        "dbd4647a66c0b0c3a278135eecd9dac3e6a160f5ee3fb1f7d817f0bb179b6955": {
-            "Token": "dbd4647a66c0b0c3a278135eecd9dac3e6a160f5ee3fb1f7d817f0bb179b6955",
-            "UserId": 1,
-            "ExpiresAt": "2024-06-12T04:44:55.497483Z"
-        }
-    }
+    "users": null,
+    "refresh_tokens": null
 }

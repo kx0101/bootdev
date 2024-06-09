@@ -141,7 +141,6 @@ func (db *DB) UpgradeUser(userId int) error {
 	for i, userFromDb := range dbStructure.Users {
 		if userFromDb.Id == userId {
 			dbStructure.Users[i].IsChirpyRed = true
-			fmt.Println(dbStructure.Users[i].IsChirpyRed)
 
 			if err := db.writeDB(dbStructure); err != nil {
 				return err
@@ -355,7 +354,6 @@ func (db *DB) DeleteChirp(userId, chirpId int) error {
 
 func (db *DB) ensureDB() error {
 	db.mux.RLock()
-	defer db.mux.RUnlock()
 
 	_, err := os.Stat(db.path)
 
